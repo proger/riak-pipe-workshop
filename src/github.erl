@@ -37,10 +37,13 @@ preferences(User, Config) ->
         [trace_github] -> [{trace, [github]}, {log, lager}];
         [trace] -> [{trace, all}, {log, lager}]
     end,
+
     {ok, Pipe} = riak_pipe:exec(Spec, Options),
 
+    % wait for all vnodes to be up
+    riak_core:wait_for_service(riak_pipe),
+
     %% send username to the first stage
-    %% xxx: this will fail on backpresure failure, will resolve in future
     ok = riak_pipe:queue_work(Pipe, User),
 
     %% send end-of-input signal
