@@ -1,0 +1,27 @@
+REBAR= rebar
+
+RECEIVER = ssh xen -- xe-deploy-vmling # hash vm-name args...
+KILL = ssh xen -- xe-kill-matching # vm-name
+
+MYDIR := $(lastword $(subst /, ,$(abspath $(dir $(lastword $(MAKEFILE_LIST))))))
+PATHS := $(addprefix -pa /$(MYDIR)/,$(wildcard deps/*/ebin ebin))
+ARGS := -dhcp $(PATHS) -home / -s ssl -s inets
+
+VMLING = vmling
+IMGHASH = $(shell openssl sha1 vmling | awk '{print $$2}' 2>/dev/null || echo undefined)
+
+t:
+	@echo $(MYDIR)
+	@echo $(PATHS)
+
+$(VMLING): 
+	$(REBAR) ling-build-image
+
+upload: $(VMLING)
+	cat $< | pv | $(RECEIVER) $(IMGHASH) $(MYDIR) $(ARGS)
+
+kill:
+	$(KILL) $(MYDIR)
+	
+
+.PHONY: upload
