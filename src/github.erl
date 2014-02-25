@@ -78,7 +78,7 @@ access_github_stars(Fitting, {User, Page}) ->
     Url = "https://api.github.com/users/" ++ User ++ "/starred?page=" ++ Page,
     riak_pipe_log:trace(Fitting, [github], [fetching, Url]),
     Repos = fetch_json(Url),
-    lists:map(fun({Repo}) ->
+    lists:map(fun(Repo) ->
 		      LanguagesUrl = proplists:get_value(<<"languages_url">>, Repo),
 		      binary_to_list(LanguagesUrl)
 	      end, Repos).
@@ -86,8 +86,8 @@ access_github_stars(Fitting, {User, Page}) ->
 %% stage 3
 extract_repo_langs(Fitting, LanguagesUrl) ->
     riak_pipe_log:trace(Fitting, [github], [fetching, LanguagesUrl]),
-    %% json format is {[{Lang :: binary(), Count :: integer()}]}
-    element(1, fetch_json(LanguagesUrl)).
+    %% json format is [{Lang :: binary(), Count :: integer()}]
+    fetch_json(LanguagesUrl).
 
 %% stage 4
 reduce_repo_langs(_Lang, Counts) ->
@@ -121,8 +121,9 @@ group_to(Key) ->
 
 fetch_json(Url) ->
     %% xxx: very naive approach
-    {ok, {{_, 200, _}, _, Body}} = httpc:request(get, {Url, ?HEADERS()}, [], []),
-    jiffy:decode(Body).
+    {ok, {{_, 200, _}, _, Body}} = httpc:request(get, {Url, ?HEADERS()}, [], [{body_format, binary}]),
+    J = jsx:decode(Body),
+    J.
 
 extract_languages_stat(All) ->
     extract_languages_stat(All, lists:sum([C || {_, C} <- All])).
